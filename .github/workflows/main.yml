@@ -1,29 +1,40 @@
-name: Build Visual Studio Solution
+name: Build Comfy Project
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "d3d-master" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "d3d-master" ]
 
 jobs:
   build:
+    # Essencial para projetos Visual Studio (.sln)
     runs-on: windows-latest
 
     steps:
+    # 1. Baixa o código do repositório
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        submodules: recursive
+        fetch-depth: 0
+        submodules: recursive # Baixa submódulos se houver nas pastas de dependências
 
+    # 2. Configura o MSBuild (ferramenta de compilação do Visual Studio)
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
 
+    # 3. Configura e Restaura o NuGet (caso existam pacotes externos além da pasta Dependencies)
     - name: Setup NuGet
       uses: NuGet/setup-nuget@v1
 
     - name: Restore NuGet Packages
       run: nuget restore Comfy.sln
 
+    # 4. Compila a Solução
+    # O MSBuild gerencia automaticamente as pastas ComfyEngine, ComfyLib e Dependencies
     - name: Build Solution
-      run: msbuild Comfy.sln /p:Configuration=Release /p:Platform="x64"
+      run: |
+        msbuild Comfy.sln `
+          -property:Configuration=Release `
+          -property:Platform="x64" `
+          -maxCpuCount
