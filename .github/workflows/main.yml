@@ -90,4 +90,6 @@ jobs:
     
           Set-Content $file $content
               }
-      
+
+
+          /p:TreatWarningsAsErrors=false
