@@ -75,3 +75,19 @@ jobs:
         name: ComfyBuild
         path: |
           **/bin/x64-Release/**
+      
+    - name: Fix Windows min/max macro conflict
+      shell: pwsh
+      run: |
+          $files = Get-ChildItem -Recurse -Include *.cpp,*.h
+
+          foreach ($file in $files) {
+          $content = Get-Content $file -Raw
+    
+          if ($content -notmatch "#define NOMINMAX") {
+            $content = "#define NOMINMAX`r`n" + $content
+          }
+    
+          Set-Content $file $content
+              }
+      
