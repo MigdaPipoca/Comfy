@@ -8,30 +8,57 @@ on:
 
 jobs:
   build:
-    # Essencial para projetos Visual Studio (.sln)
     runs-on: windows-latest
 
     steps:
-    # 1. Baixa o código do repositório
+    # 1. Checkout do código
     - name: Checkout code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        submodules: recursive # Baixa submódulos se houver nas pastas de dependências
+        submodules: recursive
 
-    # 2. Configura o MSBuild (ferramenta de compilação do Visual Studio)
+    # 2. Setup MSBuild
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    # 3. Configura e Restaura o NuGet (caso existam pacotes externos além da pasta Dependencies)
+    # 3. Setup NuGet
     - name: Setup NuGet
       uses: NuGet/setup-nuget@v1
 
     - name: Restore NuGet Packages
       run: nuget restore Comfy.sln
 
-    # 4. Compila a Solução
-    # O MSBuild gerencia automaticamente as pastas ComfyEngine, ComfyLib e Dependencies
+    # 🔧 4. PATCH AUTOMÁTICO (CORREÇÃO DOS ERROS)
+    - name: Fix missing includes (C++ std)
+      shell: pwsh
+      run: |
+        $files = @(
+          "ComfyLib/src/Graphics/Auth2D/Aet/AetUtil.cpp",
+          "ComfyLib/src/Graphics/Auth2D/Aet/AetSet.h",
+          "ComfyLib/src/IO/Stream/MemoryStream.cpp"
+        )
+
+        foreach ($file in $files) {
+          if (Test-Path $file) {
+            $content = Get-Content $file -Raw
+
+            if ($content -notmatch "#include <algorithm>") {
+              $content = "#include <algorithm>`r`n" + $content
+            }
+
+            if ($content -notmatch "#include <iterator>") {
+              $content = "#include <iterator>`r`n" + $content
+            }
+
+            Set-Content $file $content
+            Write-Host "Patched $file"
+          } else {
+            Write-Host "File not found: $file"
+          }
+        }
+
+    # 5. Build
     - name: Build Solution
       run: |
         msbuild Comfy.sln `
@@ -41,5 +68,10 @@ jobs:
           -property:PlatformToolset=v143 `
           -maxCpuCount
 
-
-
+    # 6. Upload do build (opcional mas útil)
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ComfyBuild
+        path: |
+          **/bin/x64-Release/**
